@@ -150,25 +150,29 @@ jobs:
           run-id: ${{ needs.validate.outputs.build_run_id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Create tag
+      - name: Create release notes
         run: |
           {
             git show -s --format=%B "$BUILD_HEAD_SHA"
+            echo
+            echo "---"
             echo
             echo "Deploy run: $GITHUB_RUN_ID"
             echo "Build run: $BUILD_RUN_ID"
             echo "Build number: $BUILD_RUN_NUMBER"
             echo "Build URL: $BUILD_URL"
             echo "Build SHA: $BUILD_HEAD_SHA"
-          } > tag-message.txt
-
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag -a apiserver-"$BUILD_RUN_NUMBER" -F tag-message.txt "$BUILD_HEAD_SHA"
+          } > release-notes.txt
         env:
           BUILD_RUN_ID: ${{ needs.validate.outputs.build_run_id }}
           BUILD_RUN_NUMBER: ${{ needs.validate.outputs.build_run_number }}
           BUILD_URL: ${{ needs.validate.outputs.build_url }}
+          BUILD_HEAD_SHA: ${{ needs.validate.outputs.build_head_sha }}
+
+      - name: Create tag
+        run: git tag apiserver-"$BUILD_RUN_NUMBER" "$BUILD_HEAD_SHA"
+        env:
+          BUILD_RUN_NUMBER: ${{ needs.validate.outputs.build_run_number }}
           BUILD_HEAD_SHA: ${{ needs.validate.outputs.build_head_sha }}
 
       - name: Push tag
@@ -182,7 +186,7 @@ jobs:
           apiserver-"$BUILD_RUN_NUMBER"
           apiserver-*.tar.zst
           --title "apiserver v$BUILD_RUN_NUMBER"
-          --notes-from-tag
+          --notes-file release-notes.txt
           --verify-tag
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
