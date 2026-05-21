@@ -164,7 +164,7 @@ jobs:
 
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag -a apiserver-"$GITHUB_RUN_NUMBER" -F tag-message.txt "$BUILD_HEAD_SHA"
+          git tag -a apiserver-"$BUILD_RUN_NUMBER" -F tag-message.txt "$BUILD_HEAD_SHA"
         env:
           BUILD_RUN_ID: ${{ needs.validate.outputs.build_run_id }}
           BUILD_RUN_NUMBER: ${{ needs.validate.outputs.build_run_number }}
@@ -172,18 +172,21 @@ jobs:
           BUILD_HEAD_SHA: ${{ needs.validate.outputs.build_head_sha }}
 
       - name: Push tag
-        run: git push origin apiserver-"$GITHUB_RUN_NUMBER"
+        run: git push origin apiserver-"$BUILD_RUN_NUMBER"
+        env:
+          BUILD_RUN_NUMBER: ${{ needs.validate.outputs.build_run_number }}
 
       - name: Create release
         run: >
           gh release create
-          apiserver-"$GITHUB_RUN_NUMBER"
+          apiserver-"$BUILD_RUN_NUMBER"
           apiserver-*.tar.zst
-          --title "apiserver v$GITHUB_RUN_NUMBER"
+          --title "apiserver v$BUILD_RUN_NUMBER"
           --notes-from-tag
           --verify-tag
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BUILD_RUN_NUMBER: ${{ needs.validate.outputs.build_run_number }}
 
       - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         id: get-id-token
