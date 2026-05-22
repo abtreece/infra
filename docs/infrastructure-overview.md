@@ -162,8 +162,8 @@ Users don't access these buckets directly. Instead, they access `apt.fullstaqrub
 
 The Server Edition's CI/CD system stores artifacts for [CI/CD resumption](https://github.com/fullstaq-ruby/server-edition/blob/main/dev-handbook/ci-cd-resumption.md) in two buckets (see `terraform/ci_storage.tf`):
 
-- A **GCS bucket** (`${var.gcloud_bucket_prefix}-server-edition-ci-artifacts`) — publicly readable; the `test` environment writes via WIF, the `deploy` environment reads. Objects expire after 30 days.
-- An **Azure Blob container** (`server-edition-ci-artifacts` inside the `${var.storage_account_prefix}seredci1` storage account) — private; the `test` environment writes via Federated Identity Credentials, the `deploy` environment reads. Objects expire after 30 days.
+- A **GCS bucket** (`fsruby-server-edition-ci-artifacts`) — publicly readable; the `test` environment writes via Workload Identity Federation (WIF), the `deploy` environment reads. Objects expire after 30 days.
+- An **Azure Blob container** (`server-edition-ci-artifacts` inside the `fsruby2seredci1` storage account) — private. Provisioned for a future migration of CI artifacts off GCS, but **not currently in use**; server-edition CI still writes artifacts only to the GCS bucket above. The cache container in the same storage account *is* actively used (see "Server Edition CI cache store" below).
 
 ## Server Edition CI cache store
 
