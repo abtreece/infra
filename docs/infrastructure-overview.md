@@ -104,6 +104,21 @@ The Server Edition's APT and YUM repositories are stored inside these buckets. T
 
 Users don't access these buckets directly. Instead, they access `apt.fullstaqruby.org` and `yum.fullstaqruby.org` (served by the Nginx web servers), which redirect to these buckets.
 
+## Server Edition APT & YUM archive repo buckets
+
+- Administered by role: Infra Maintainers
+
+The Server Edition's APT and YUM archive repositories — frozen mirrors for end-of-life distribution packages — are stored in these buckets:
+
+- `fsruby-server-edition-apt-repo-archive`
+- `fsruby-server-edition-yum-repo-archive`
+
+Both buckets are publicly readable. Unlike the live APT/YUM repo buckets, the archive buckets deliberately have **no CI write access** — the frozen-mirror invariant is enforced in IAM rather than by convention. Migration into these buckets happens out-of-band via scripts in the [server-edition repository](https://github.com/fullstaq-ruby/server-edition).
+
+Users access these archives via `apt-archive.fullstaqruby.org` and `yum-archive.fullstaqruby.org`, which redirect to the bucket contents. Each archive subdomain has its own Azure DNS zone, delegated via NS records in the `fullstaqruby.org` apex zone, with A/AAAA records pointing at the backend server.
+
+Before the first migration completes, the `latest_version.txt` file in each archive bucket may not yet exist. The `query-latest-repo-versions.rb` script handles this case explicitly: archive buckets that return 404 fall back to version 0 (`APT_ARCHIVE_LATEST_VERSION=0` / `YUM_ARCHIVE_LATEST_VERSION=0`), allowing the web server to start cleanly. Any other non-2xx response is still treated as a hard failure.
+
 ## Container registry
 
 - Administered by role: Infra Maintainers
