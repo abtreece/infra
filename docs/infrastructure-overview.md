@@ -110,8 +110,8 @@ Users don't access these buckets directly. Instead, they access `apt.fullstaqrub
 
 The Server Edition's APT and YUM archive repositories — frozen mirrors for end-of-life distribution packages — are stored in these buckets:
 
-- `fsruby-server-edition-apt-repo-archive`
-- `fsruby-server-edition-yum-repo-archive`
+- `fsruby-server-edition-apt-archive-repo`
+- `fsruby-server-edition-yum-archive-repo`
 
 Both buckets are publicly readable. Unlike the live APT/YUM repo buckets, the archive buckets deliberately have **no CI write access** — the frozen-mirror invariant is enforced in IAM rather than by convention. Migration into these buckets happens out-of-band via scripts in the [server-edition repository](https://github.com/fullstaq-ruby/server-edition).
 

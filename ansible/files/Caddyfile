@@ -61,7 +61,7 @@ apt-archive.{$DOMAIN_NAME} {
 	}
 	encode gzip
 	handle {
-		redir https://storage.googleapis.com/{$GCLOUD_BUCKET_PREFIX}-server-edition-apt-repo-archive/versions/{$APT_ARCHIVE_LATEST_VERSION}/public{uri}
+		redir https://storage.googleapis.com/{$GCLOUD_BUCKET_PREFIX}-server-edition-apt-archive-repo/versions/{$APT_ARCHIVE_LATEST_VERSION}/public{uri}
 	}
 }
 
@@ -77,6 +77,6 @@ yum-archive.{$DOMAIN_NAME} {
 	}
 	encode gzip
 	handle {
-		redir https://storage.googleapis.com/{$GCLOUD_BUCKET_PREFIX}-server-edition-yum-repo-archive/versions/{$YUM_ARCHIVE_LATEST_VERSION}/public{uri}
+		redir https://storage.googleapis.com/{$GCLOUD_BUCKET_PREFIX}-server-edition-yum-archive-repo/versions/{$YUM_ARCHIVE_LATEST_VERSION}/public{uri}
 	}
 }
