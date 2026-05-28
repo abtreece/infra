@@ -131,6 +131,9 @@ jobs:
       - name: Check code formatting with Rufo
         run: bundle exec rufo --check .
         working-directory: apiserver
+      - name: Run tests
+        run: bundle exec rspec -f d
+        working-directory: apiserver
 
   detect-apiserver-changes:
     runs-on: ubuntu-24.04
