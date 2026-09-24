@@ -42,7 +42,7 @@ resource "google_storage_bucket_iam_binding" "server-edition-yum-repo-writable-b
 resource "google_storage_bucket" "server-edition-apt-archive-repo" {
   depends_on                  = [google_project_service.storage-api]
   name                        = "${var.gcloud_bucket_prefix}-server-edition-apt-archive-repo"
-  force_destroy               = true
+  force_destroy               = false
   uniform_bucket_level_access = true
   location                    = var.gcloud_storage_location
 }
@@ -57,7 +57,7 @@ resource "google_storage_bucket_iam_binding" "server-edition-apt-archive-repo-pu
 resource "google_storage_bucket" "server-edition-yum-archive-repo" {
   depends_on                  = [google_project_service.storage-api]
   name                        = "${var.gcloud_bucket_prefix}-server-edition-yum-archive-repo"
-  force_destroy               = true
+  force_destroy               = false
   uniform_bucket_level_access = true
   location                    = var.gcloud_storage_location
 }
