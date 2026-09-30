@@ -64,4 +64,4 @@ This guide explains how to deploy infrastructure updates. This guide is not for 
     cd ..
     ~~~
 
-> The API server itself is not deployed by this playbook. Code changes under `apiserver/` are released by the `.github/workflows/apiserver.yml` workflow, which packages a tarball, attaches it to a GitHub Release, and triggers `POST /admin/upgrade_apiserver` on the live host.
+> The API server itself is not deployed by this playbook. Code changes under `apiserver/` are built and deployed by the Github Actions workflows in `.github/workflows/` when pushed to `main`. They package a tarball, attach it to a GitHub Release, and trigger `POST /admin/upgrade_apiserver` on the live host.

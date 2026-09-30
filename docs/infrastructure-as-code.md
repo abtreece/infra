@@ -16,6 +16,6 @@ The infrastructure-as-code is stored in the following directories:
 
  * `ansible/` — Configuration of the backend VM (Caddy, the API server, Prometheus, and OS hardening). Administered by [Infra Maintainers](roles.md) and applied manually; see [Deployment guide](deploy.md).
 
- * `.github/workflows/apiserver.yml` — Builds and deploys the API server.
+ * `.github/workflows/` — Github Actions workflows that together test the infrastructure code, and build and deploy the API server.
 
 Note that not all infrastructure can, or (for security reasons) should, be managed via code. Learn more at [Infrastructure bootstrapping](infrastructure-bootstrapping.md).
