@@ -108,12 +108,14 @@ Users don't access these buckets directly. Instead, they access `apt.fullstaqrub
 
 - Administered by role: Infra Maintainers
 
-The Server Edition's APT and YUM archive repositories — frozen mirrors for end-of-life distribution packages — are stored in these buckets:
+The Server Edition's APT and YUM archive repositories hold every package whose Ruby version *or* distribution has reached end-of-life. The live repos hold only packages where both are still supported, so the two sets never overlap. The archive only grows: packages move into it as Ruby versions and distributions reach end-of-life.
+
+The archive repositories are stored in these buckets:
 
 - `fsruby-server-edition-apt-archive-repo`
 - `fsruby-server-edition-yum-archive-repo`
 
-Both buckets are publicly readable. Unlike the live APT/YUM repo buckets, the archive buckets deliberately have **no CI write access** — the frozen-mirror invariant is enforced in IAM rather than by convention. Migration into these buckets happens out-of-band via scripts in the [server-edition repository](https://github.com/fullstaq-ruby/server-edition).
+Both buckets are publicly readable. Unlike the live APT/YUM repo buckets, the archive buckets deliberately have **no CI write access** — packages enter the archive only through a deliberate migration, and that is enforced in IAM rather than by convention. Migration into these buckets happens out-of-band via scripts in the [server-edition repository](https://github.com/fullstaq-ruby/server-edition).
 
 Users access these archives via `apt-archive.fullstaqruby.org` and `yum-archive.fullstaqruby.org`, which redirect to the bucket contents. Each archive subdomain has its own Azure DNS zone, delegated via NS records in the `fullstaqruby.org` apex zone, with A/AAAA records pointing at the backend server.
 
