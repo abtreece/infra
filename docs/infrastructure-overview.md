@@ -64,8 +64,6 @@ flowchart LR
 
 All Google Cloud resources live in a single project, `fsruby-server-edition2` (display name "Fullstaq Ruby Server Edition"). The `google_project` resource itself is provisioned in `terraform-hisec/gcloud_project.tf` so that creating/deleting the project requires Infra Owner access, but resources _inside_ the project (buckets, IAM, Workload Identity Federation) are managed in `terraform/` by Infra Maintainers.
 
-The hisec / non-hisec separation is enforced at the **Terraform state and access-group layer**, not via separate GCP projects. See [Terraform state (normal)](#terraform-state-normal) and [Terraform state (hisec)](#terraform-state-hisec).
-
 ## CI/CD authentication
 
 - Administered by role: Infra Maintainers
@@ -74,7 +72,7 @@ CI/CD authenticates using short-lived GitHub-issued OIDC tokens — there are no
 
 - **`fullstaq-ruby/server-edition` → Google Cloud** uses [Workload Identity Federation](https://cloud.google.com/iam/docs/workload-identity-federation) (defined in `terraform/gcloud_auth.tf`). Two pools (`github-ci-test`, `github-ci-deploy`) gate access by GitHub repository owner and Actions environment. Through these pools, server-edition CI jobs gain write access to the APT/YUM repo buckets and the GCP CI artifacts bucket — see `terraform/repo_buckets.tf` and `terraform/ci_storage.tf`. The CI cache lives in Azure (see below), not on GCP.
 - **`fullstaq-ruby/server-edition` → Azure** uses [Federated Identity Credentials](https://learn.microsoft.com/en-us/entra/workload-id/workload-identity-federation) on Entra ID applications (defined in `terraform-hisec/`). These authenticate workflows that read or write Azure Blob Storage (the CI artifacts and CI cache containers) and Azure Key Vault (the GPG signing key).
-- **`fullstaq-ruby/infra` → API server** uses a GitHub-issued OIDC JWT (audience `backend.fullstaqruby.org`) sent as a bearer token to `POST /admin/upgrade_apiserver`. The infra repo's `apiserver.yml` workflow does **not** authenticate to GCP or Azure APIs — the rollout mechanism is entirely on the VM (see [API server](#api-server)). The same JWT mechanism is used by `server-edition` to call `/admin/restart_web_server` after a publish.
+- **`fullstaq-ruby/infra` → API server** uses a GitHub-issued OIDC JWT (audience `backend.fullstaqruby.org`) sent as a bearer token to `POST /admin/upgrade_apiserver`. The infra repo's workflows do **not** authenticate to GCP or Azure APIs — the rollout mechanism is entirely on the VM (see [API server](#api-server)). The same JWT mechanism is used by `server-edition` to call `/admin/restart_web_server` after a publish.
 
 ## API server
 
@@ -84,7 +82,7 @@ The API server is a small Sinatra service that exposes a narrow set of `/admin/*
 
 The API server runs on the backend VM (see [VM (Hetzner)](#vm-hetzner)) under systemd, with Puma listening on a Unix socket that Caddy proxies to. It is provisioned by Ansible (`ansible/tasks/apiserver.yml`, unit file `ansible/files/apiserver.service`).
 
-Releases are built and published by `.github/workflows/apiserver.yml`: the workflow packages the source as a tarball, attaches it to a GitHub Release tagged `apiserver-N`, and then calls `POST /admin/upgrade_apiserver`. That request is handled by a sibling `apiserver-deployer.service` (provisioned alongside) which fetches the release tarball into `/opt/apiserver/versions/` and restarts the API server. The deployer exists so the API server can replace itself without leaving an unreachable gap.
+Releases are built and published by the workflows in `.github/workflows/`: the "Test and build" workflow packages the source as a tarball, and the "Deploy" workflow attaches it to a GitHub Release tagged `apiserver-N` and then calls `POST /admin/upgrade_apiserver`. That request triggers a sibling `apiserver-deployer.service` (provisioned alongside), which fetches the release tarball into `/opt/apiserver/versions/`, after which the API server is restarted. The deployer exists so that the API server can be replaced without leaving an unreachable gap, and for security: the API server itself runs as a separate user without the ability to modify its own code.
 
 ## Caddy web server
 
@@ -97,7 +95,7 @@ Caddy runs on the backend VM (see [VM (Hetzner)](#vm-hetzner)) and serves two vi
 
 There is no separate `backend.fullstaqruby.org` virtual host — the hostname exists as a DNS record (and as the OIDC token audience claim) but is not terminated by Caddy. CI/CD calls the `/admin/*` endpoints via `https://apt.fullstaqruby.org/admin/*`.
 
-The redirect target's version is read from each bucket's `latest_version.txt` once at startup (via the `query-latest-repo-versions.rb` `ExecStartPre` in the systemd unit). Caddy must therefore be restarted after a publish so it picks up the new version — that restart is what the API server's `restart_web_server` endpoint exists to trigger.
+The redirect target's version is read from each bucket's `latest_version.txt` once at startup (via the `query-latest-repo-versions.rb` `ExecStartPre` in the systemd unit). Caddy must therefore be restarted after a publish so it picks up the new version — that restart is what the API server's `restart_web_server` endpoint exists to trigger. See the [APT/YUM repo design](https://github.com/fullstaq-ruby/server-edition/blob/main/dev-handbook/apt-yum-repo.md) for how `latest_version.txt` fits into the repo layout.
 
 Users interact with `{apt,yum}.fullstaqruby.org` rather than the buckets directly. This decouples users from where the repos are actually hosted, allowing us to change the hosting mechanism without breaking users' repository URLs.
 
@@ -109,9 +107,9 @@ TLS certificates are obtained via the ACME DNS-01 challenge against Azure DNS. C
 
 - Administered by role: Infra Maintainers
 
-A single Ubuntu (≥ 24.04) VPS hosted at Hetzner runs every backend service (Caddy, the API server, the API server deployer, Prometheus + node_exporter, fail2ban, AppArmor, unattended-upgrades, ufw). Its forward DNS records (`backend.fullstaqruby.org`, `apt.fullstaqruby.org`, `yum.fullstaqruby.org`) are managed in `terraform/dns.tf`; its static IPs are referenced from `terraform/variables.tf`. The PTR record (`backend.fullstaqruby.org`) is set manually at the Hetzner provider during bootstrapping (see [bootstrapping](infrastructure-bootstrapping.md) Step 7), not via Terraform.
+A single Ubuntu (≥ 24.04) VPS hosted at Hetzner runs Caddy and the API server. Its forward DNS records (`backend.fullstaqruby.org`, `apt.fullstaqruby.org`, `yum.fullstaqruby.org`) are managed in `terraform/dns.tf`; its static IPs are referenced from `terraform/variables.tf`. The PTR record (`backend.fullstaqruby.org`) is set manually at the Hetzner provider during bootstrapping (see [bootstrapping](infrastructure-bootstrapping.md) Step 7), not via Terraform.
 
-The VM is configured entirely by Ansible (`ansible/main.yml`). The playbook covers OS hardening (SSH, fail2ban, AppArmor, ufw, autoreboot, unattended-upgrades) and the service stack (Prometheus, Caddy, apiserver-deployer, apiserver). There is no Kubernetes — the previous GKE Autopilot setup was replaced by this VM in the July 2024 rearchitecture.
+The VM is configured entirely by Ansible (`ansible/main.yml`), covering both OS hardening and the services it runs.
 
 ## DNS
 
@@ -162,17 +160,17 @@ Users don't access these buckets directly. Instead, they access `apt.fullstaqrub
 
 The Server Edition's CI/CD system stores artifacts for [CI/CD resumption](https://github.com/fullstaq-ruby/server-edition/blob/main/dev-handbook/ci-cd-resumption.md) in two buckets (see `terraform/ci_storage.tf`):
 
-- A **GCS bucket** (`fsruby-server-edition-ci-artifacts`) — publicly readable; the `test` environment writes via Workload Identity Federation (WIF), the `deploy` environment reads. Objects expire after 30 days.
+- A **GCS bucket** (`fsruby-server-edition-ci-artifacts`) — publicly readable; the `test` environment writes via Workload Identity Federation (WIF), the `deploy` environment reads. Objects expire automatically.
 - An **Azure Blob container** (`server-edition-ci-artifacts` inside the `fsruby2seredci1` storage account) — private. Provisioned for a future migration of CI artifacts off GCS, but **not currently in use**; server-edition CI still writes artifacts only to the GCS bucket above. The cache container in the same storage account *is* actively used (see "Server Edition CI cache store" below).
 
 ## Server Edition CI cache store
 
 - Administered by role: Infra Maintainers
 
-The Server Edition's CI/CD system stores caches in an **Azure Blob container** (`server-edition-ci-cache` inside the same `${var.storage_account_prefix}seredci1` storage account; see `terraform/ci_storage.tf`). Only the `test` environment writes; objects are automatically deleted 90 days after last access. There is no equivalent cache bucket on GCP.
+The Server Edition's CI/CD system stores caches in an **Azure Blob container** (`server-edition-ci-cache` inside the same `fsruby2seredci1` storage account; see `terraform/ci_storage.tf`). Only the `test` environment writes; objects expire automatically based on last access time. There is no equivalent cache bucket on GCP.
 
 ## GPG private key
 
 - Administered by role: Infra Owners, Infra Maintainers
 
-The GPG private key is used to sign APT and YUM repositories. It is stored in the Azure Key Vault for Infra Owners — `${var.key_vault_prefix}infraowners`, currently `fsruby2infraowners` (see `terraform-hisec/key_vault.tf`). GitHub Actions in the `test` and `deploy` environments are granted read access via Entra ID Federated Identity Credentials.
+The GPG private key is used to sign APT and YUM repositories. It is stored in the Azure Key Vault for Infra Owners, `fsruby2infraowners` (see `terraform-hisec/key_vault.tf`). GitHub Actions in the `test` and `deploy` environments are granted read access via GitHub OIDC (see [CI/CD authentication](#cicd-authentication)).
