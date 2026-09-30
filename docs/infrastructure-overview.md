@@ -1,62 +1,8 @@
 ## Infrastructure overview
 
-The following diagram shows the major infrastructure components and how they relate to each other. The role that administers each component is given in the section heading below.
+The following diagram shows which infrastructure components exist and how they relate to each other. The bubbles on the corner of a component shows which [role](roles.md) administers that component.
 
-```mermaid
-flowchart LR
-  U([End users<br/>apt-get / yum])
-
-  subgraph GH["GitHub Actions"]
-    SE[server-edition CI]
-    INF[infra CI<br/>apiserver workflow]
-  end
-
-  subgraph HZ["Hetzner VM &nbsp;·&nbsp; Ubuntu ≥ 24.04"]
-    Caddy[Caddy<br/>apt./yum. vhosts]
-    API[API server<br/>Sinatra + Puma]
-    DEPL[apiserver-deployer]
-    Prom[Prometheus<br/>+ node_exporter]
-  end
-
-  subgraph GCP["Google Cloud &nbsp;·&nbsp; fsruby-server-edition2"]
-    APT[(APT repo bucket)]
-    YUM[(YUM repo bucket)]
-    CIA[(CI artifacts bucket<br/>public read)]
-    WIF[Workload Identity<br/>Federation pools]
-  end
-
-  subgraph AZ["Azure &nbsp;·&nbsp; Entra ID tenant"]
-    DNS[Azure DNS<br/>fullstaqruby.org<br/>+ delegated apt./yum. zones]
-    KV[Key Vault<br/>GPG key, ACME SP creds]
-    BS[(Blob Storage<br/>Terraform state,<br/>CI artifacts, CI cache)]
-    FIC[Entra ID FIC apps]
-  end
-
-  GP[GitHub Pages<br/>fullstaqruby.org / www.]
-  TR[TransIP<br/>domain registrar]
-
-  U -->|HTTPS| Caddy
-  Caddy -->|redirect| APT
-  Caddy -->|redirect| YUM
-  Caddy -->|/admin/*| API
-  Caddy -. ACME DNS-01 .-> DNS
-  API --> DEPL
-  DEPL -. systemctl restart .-> API
-  DEPL -. systemctl restart .-> Caddy
-
-  SE -->|OIDC| WIF
-  WIF --> APT
-  WIF --> YUM
-  WIF --> CIA
-  SE -->|OIDC JWT| Caddy
-  INF -->|OIDC JWT| Caddy
-  SE -->|OIDC| FIC
-  FIC --> KV
-
-  TR -. NS delegation .-> DNS
-  GP -. A/AAAA .-> DNS
-  HZ -. A/AAAA .-> DNS
-```
+![Infrastructure overview diagram](infrastructure-overview.drawio.svg)
 
 ## Google Cloud project
 
