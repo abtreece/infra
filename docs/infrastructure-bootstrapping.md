@@ -156,7 +156,26 @@ ansible-playbook -i hosts.ini -v main.yml
 cd ..
 ```
 
-## Step 12: Populate Github Actions secrets and variables
+## Step 12: Deploy the API server
+
+The Ansible run in step 11 installs `apiserver-deployer`, which downloads the latest API server release from the [fullstaq-ruby/infra](https://github.com/fullstaq-ruby/infra/releases) repo. If a release already exists, the API server is now running. Verify on the VM:
+
+```bash
+sudo systemctl status apiserver-deployer apiserver
+```
+
+If the repo has no release yet (e.g. it was freshly created in step 6):
+
+1. In the [fullstaq-ruby/infra](https://github.com/fullstaq-ruby/infra/settings/environments) repo, create a `deploy` environment.
+2. Push a commit that touches `apiserver/` to `main`. This triggers the "Test and build" workflow, followed by the "Deploy" workflow, which publishes a release. The Deploy workflow's final step (calling `/admin/upgrade_apiserver`) fails because no API server is running yet; that is expected.
+3. On the VM, install and start the released API server:
+
+   ```bash
+   sudo systemctl restart apiserver-deployer
+   sudo systemctl restart apiserver
+   ```
+
+## Step 13: Populate Github Actions secrets and variables
 
 In the [fullstaq-ruby/server-edition](https://github.com/fullstaq-ruby/server-edition/settings/secrets) repo, create the following environments:
 
@@ -186,6 +205,6 @@ Create these environment-specific variables:
 - `AZURE_CLIENT_ID` ('test' environment): fetch using `pushd terraform-hisec >/dev/null && terraform show -json | jq -r '.values.root_module.resources[] | select(.address == "azuread_application.server-edition-github-ci-test") | .values.application_id'; popd >/dev/null`
 - `AZURE_CLIENT_ID` ('deploy' environment): fetch using `pushd terraform-hisec >/dev/null && terraform show -json | jq -r '.values.root_module.resources[] | select(.address == "azuread_application.server-edition-github-ci-deploy") | .values.application_id'; popd >/dev/null`
 
-## Step 13: Onboard everybody
+## Step 14: Onboard everybody
 
 Onboard everybody in the [members list](members.md) according to the [onboarding instructions](onboarding.md).
